@@ -23,6 +23,7 @@ pub mod model {
     pub const LILYGO_T_LORA_PAGER: u16 = 9;
     pub const SEEED_XIAO_ESP32S3_KIT: u16 = 10;
     pub const LILYGO_T_DECK: u16 = 11;
+    pub const ELECROW_THINKNODE_M6: u16 = 12;
 }
 
 /// Choose the window duration from the retained bond count when it opens.
@@ -166,6 +167,7 @@ mod tests {
             ("tlora-pager", model::LILYGO_T_LORA_PAGER),
             ("xiao-esp32s3", model::SEEED_XIAO_ESP32S3_KIT),
             ("tdeck", model::LILYGO_T_DECK),
+            ("thinknode-m6", model::ELECROW_THINKNODE_M6),
         ];
         for (board, id) in models {
             let entry = std::format!("\"id\": \"{board}\", \"model_id\": {id},");

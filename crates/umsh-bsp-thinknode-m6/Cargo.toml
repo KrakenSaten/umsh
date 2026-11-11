@@ -1,0 +1,57 @@
+[package]
+name = "umsh-bsp-thinknode-m6"
+description = "Board support for the Elecrow ThinkNode M6 outdoor solar node (nRF52840 + SX1262)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+# Board-level BSP for the Elecrow ThinkNode M6. Composes umsh-bsp-nrf52840
+# (chip plumbing) with this board's pinout.
+#
+# The sixth nRF52840 + SX1262 board, and the second fixed solar node after
+# the SenseCAP Solar. The radio has no external RXEN (DIO2 alone switches
+# the antenna) and its TCXO runs from DIO3 at 3.3 V rather than 1.8 V.
+#
+# In scope:
+#   * USB-CDC over the nRF native USB peripheral (chip BSP)
+#   * two LEDs (red P0.12, blue P0.07) + one PWR button (P0.17)
+#   * battery measurement (SAADC AIN4/P0.28, divider gated by P0.11) and
+#     the charger's status line (P0.15)
+#   * SX1262 LoRa radio
+#   * Quectel L76K GNSS power sequencing (P0.06 enable, P0.30 standby,
+#     P0.29 reset)
+#   * Low-battery System OFF + LPCOMP solar-recovery wake
+#
+# Expansion I²C (P1.09/P0.08) is exposed by `ulcp-i2c`.
+#
+# Out of scope (not yet):
+#   * the PCF8563 RTC at 0x51
+#   * QSPI external flash (MX25R1635F)—held unpowered; NV stays on internal NVMC
+
+[features]
+ulcp-i2c = ["umsh-bsp-nrf52840/ulcp-i2c", "dep:umsh-ulcp", "dep:umsh-ulcp-device"]
+default = []
+
+[dependencies]
+umsh-ulcp = { path = "../umsh-ulcp", default-features = false, optional = true }
+umsh-ulcp-device = { path = "../umsh-ulcp-device", default-features = false, optional = true }
+umsh-bsp-nrf52840 = { path = "../umsh-bsp-nrf52840", default-features = false }
+umsh-hal          = { path = "../umsh-hal", default-features = false }
+# Power sequencing for the on-board Quectel L76K, as a `umsh-gnss` Power
+# implementation. The parser and the pump live in `umsh-gnss`; only the
+# pin handling is board business.
+umsh-gnss         = { path = "../umsh-gnss", default-features = false, features = ["pump"] }
+
+# Used by the `Platform` type bundle.
+umsh-mac    = { path = "../umsh-mac", default-features = false }
+umsh-crypto = { path = "../umsh-crypto", default-features = false, features = ["software-crypto"] }
+
+[target.'cfg(target_os = "none")'.dependencies]
+umsh-radio-loraphy = { path = "../umsh-radio-loraphy", default-features = false }
+umsh-ux-tracker   = { path = "../umsh-ux-tracker", default-features = false }
+embassy-nrf = { version = "0.11", default-features = false, features = ["nrf52840", "time-driver-rtc1", "gpiote", "rt"] }
+embassy-time      = { version = "0.5", default-features = false }
+embassy-sync = { version = "0.8", default-features = false }
+embassy-futures   = { version = "0.1", default-features = false }
+cortex-m          = { version = "0.7" }

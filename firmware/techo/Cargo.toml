@@ -15,6 +15,7 @@ board-t1000e = ["ulcp-i2c", "t1000e", "cap-battery-saadc", "cap-gnss", "gnss-hol
 board-sensecap-solar = ["ulcp-i2c", "cap-battery-saadc", "power-button", "cap-gnss", "meshcore-forwarder"]
 board-wio-tracker-l1 = ["display-oled", "dpad-nav", "system-off-wio", "cap-battery-saadc", "cap-buzzer", "cap-gnss", "gnss-holds-the-clock"]
 board-xiao-nrf52 = ["ulcp-i2c", "cap-battery-saadc", "led-active-low", "led-rgb", "meshcore-forwarder", "dcdc-reg1"]
+board-thinknode-m6 = ["ulcp-i2c", "cap-battery-saadc", "cap-gnss", "attention-led", "meshcore-forwarder"]
 
 # ─── Capability features (shared code shape, board-portable) ───
 # The historical `t1000e` flag still bundles the T-1000E-only capabilities
@@ -78,7 +79,10 @@ dcdc-reg1 = []
 # Dedicated hardware power button + System OFF teardown / GPIO-DETECT wake
 # (Solar P1 PWR button on P1.01). A board with a button reserved for
 # power, distinct from the single-button gesture FSM.
-power-button = []
+power-button = ["attention-led"]
+# A second LED carries the locate alert and the confirmations that answer
+# a button press, leaving the heartbeat LED to show status alone.
+attention-led = []
 boot-pairing-window = []
 
 # Default build = T-Echo.

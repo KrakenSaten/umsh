@@ -202,7 +202,11 @@ mod firmware {
         feature = "t1000e"
     ))]
     use umsh_bsp_nrf52840::system_off::Port;
-    #[cfg(any(feature = "system-off-wio", feature = "power-button"))]
+    #[cfg(any(
+        feature = "system-off-wio",
+        feature = "power-button",
+        feature = "board-thinknode-m6"
+    ))]
     use umsh_bsp_nrf52840::system_off::ShutdownReason;
     #[cfg(any(feature = "system-off-techo", feature = "system-off-wio"))]
     use umsh_bsp_nrf52840::system_off::drive_pin_high;
@@ -232,6 +236,8 @@ mod firmware {
     use umsh_bsp_t1000e::power as board_power;
     #[cfg(all(feature = "cap-battery-saadc", feature = "board-techo"))]
     use umsh_bsp_techo::power as board_power;
+    #[cfg(all(feature = "cap-battery-saadc", feature = "board-thinknode-m6"))]
+    use umsh_bsp_thinknode_m6::power as board_power;
     #[cfg(all(feature = "cap-battery-saadc", feature = "board-wio-tracker-l1"))]
     use umsh_bsp_wio_tracker_l1::power as board_power;
     #[cfg(all(feature = "cap-battery-saadc", feature = "board-xiao-nrf52"))]
@@ -243,6 +249,8 @@ mod firmware {
     use umsh_bsp_t1000e::USB as BOARD_USB;
     #[cfg(feature = "board-techo")]
     use umsh_bsp_techo::USB as BOARD_USB;
+    #[cfg(feature = "board-thinknode-m6")]
+    use umsh_bsp_thinknode_m6::USB as BOARD_USB;
     #[cfg(feature = "board-wio-tracker-l1")]
     use umsh_bsp_wio_tracker_l1::USB as BOARD_USB;
     #[cfg(feature = "board-xiao-nrf52")]
@@ -254,6 +262,8 @@ mod firmware {
     use umsh_bsp_t1000e::i2c as board_i2c;
     #[cfg(all(feature = "ulcp-i2c", feature = "board-techo"))]
     use umsh_bsp_techo::i2c as board_i2c;
+    #[cfg(all(feature = "ulcp-i2c", feature = "board-thinknode-m6"))]
+    use umsh_bsp_thinknode_m6::i2c as board_i2c;
     #[cfg(all(feature = "ulcp-i2c", feature = "board-wio-tracker-l1"))]
     use umsh_bsp_wio_tracker_l1::i2c as board_i2c;
     #[cfg(all(feature = "ulcp-i2c", feature = "board-xiao-nrf52"))]
@@ -270,6 +280,8 @@ mod firmware {
     type BoardGnss = umsh_bsp_wio_tracker_l1::gnss::Gnss<'static>;
     #[cfg(all(feature = "cap-gnss", feature = "board-sensecap-solar"))]
     type BoardGnss = umsh_bsp_sensecap_solar::gnss::Gnss<'static>;
+    #[cfg(all(feature = "cap-gnss", feature = "board-thinknode-m6"))]
+    type BoardGnss = umsh_bsp_thinknode_m6::gnss::Gnss<'static>;
     /// The byte stream the pump reads.
     #[cfg(feature = "cap-gnss")]
     type GnssUart = BufferedUarte<'static>;
@@ -336,9 +348,9 @@ mod firmware {
     use umsh_ux_tracker::led::T1000eLedEngine;
     #[cfg(not(feature = "t1000e"))]
     use umsh_ux_tracker::led::{LedEngine, LedTimings};
-    // The Solar P1's attention LED plays the same sequences from the
-    // generic engine.
-    #[cfg(any(feature = "t1000e", feature = "power-button"))]
+    // A second, attention LED plays the same sequences from the generic
+    // engine.
+    #[cfg(any(feature = "t1000e", feature = "attention-led"))]
     use umsh_ux_tracker::led::LedSequence;
 
     bind_interrupts!(struct Irqs {
@@ -405,6 +417,8 @@ mod firmware {
     const DEFAULT_DEVICE_NAME: &str = "UMSH Wio L1";
     #[cfg(feature = "board-xiao-nrf52")]
     const DEFAULT_DEVICE_NAME: &str = "UMSH XIAO";
+    #[cfg(feature = "board-thinknode-m6")]
+    const DEFAULT_DEVICE_NAME: &str = "UMSH ThinkNode";
 
     /// The board default name plus a stable per-die suffix—the low 16
     /// bits of FICR DEVICEADDR, the same die-unique value the BLE
@@ -466,6 +480,8 @@ mod firmware {
     const DEV_MODEL: &str = "Seeed Wio Tracker L1 / L1 Pro";
     #[cfg(feature = "board-xiao-nrf52")]
     const DEV_MODEL: &str = "Seeed XIAO nRF52840 + Wio-SX1262 Kit";
+    #[cfg(feature = "board-thinknode-m6")]
+    const DEV_MODEL: &str = "Elecrow ThinkNode M6";
 
     /// The same hardware, as the model identifier in pairing advertisements.
     #[cfg(feature = "board-techo")]
@@ -478,6 +494,8 @@ mod firmware {
     const BLE_MODEL_ID: u16 = ble_privacy::model::SEEED_WIO_TRACKER_L1;
     #[cfg(feature = "board-xiao-nrf52")]
     const BLE_MODEL_ID: u16 = ble_privacy::model::SEEED_XIAO_NRF52840_KIT;
+    #[cfg(feature = "board-thinknode-m6")]
+    const BLE_MODEL_ID: u16 = ble_privacy::model::ELECROW_THINKNODE_M6;
 
     const TX_PREAMBLE_SYMBOLS: u16 = 32;
 
@@ -530,15 +548,21 @@ mod firmware {
             // and no battery-backed RTC simply reports that it does not
             // know what time it is until a host tells it.
             time: Some(TimeConfig),
-            // The Solar P1 is the one board here that runs its receiver
-            // by default. It is a fixed outdoor node with a panel rather
-            // than a pocket tracker on a cell: the load it is worried
-            // about is the one it can see coming, and a node that has to
-            // be told to find itself after every reset is the worse
-            // failure. Everywhere else the receiver waits to be asked.
-            #[cfg(all(feature = "cap-gnss", feature = "board-sensecap-solar"))]
+            // The two solar nodes run their receivers by default. They are
+            // fixed outdoor nodes with a panel rather than pocket trackers
+            // on a cell: the load they are worried about is the one they
+            // can see coming, and a node that has to be told to find
+            // itself after every reset is the worse failure. Everywhere
+            // else the receiver waits to be asked.
+            #[cfg(all(
+                feature = "cap-gnss",
+                any(feature = "board-sensecap-solar", feature = "board-thinknode-m6")
+            ))]
             gnss: Some(GnssConfig::ALWAYS_ON),
-            #[cfg(all(feature = "cap-gnss", not(feature = "board-sensecap-solar")))]
+            #[cfg(all(
+                feature = "cap-gnss",
+                not(any(feature = "board-sensecap-solar", feature = "board-thinknode-m6"))
+            ))]
             gnss: Some(GnssConfig::DEFAULT),
             #[cfg(not(feature = "cap-gnss"))]
             gnss: None,
@@ -5508,6 +5532,31 @@ mod firmware {
         umsh_bsp_xiao_nrf52::shutdown::enter_off(reason)
     }
 
+    /// ThinkNode M6 battery monitor task: SAADC, the active-high divider
+    /// enable (P0.11), and the charger's status line (P0.15, low while
+    /// charging). See the BSP `power` module.
+    #[cfg(feature = "board-thinknode-m6")]
+    #[embassy_executor::task]
+    async fn thinknode_power_task(
+        saadc: Saadc<'static, 1>,
+        divider_enable: Output<'static>,
+        charging_n: Input<'static>,
+    ) {
+        umsh_bsp_thinknode_m6::power::run_battery_monitor(saadc, divider_enable, charging_n).await;
+    }
+
+    /// System OFF for the ThinkNode M6. Two producers: the PWR hold in
+    /// [`thinknode_button_task`] and the BSP's protective low-battery
+    /// cutoff. Holds the peripheral-rail enable so it stays driven until
+    /// the teardown takes it down. See the BSP `shutdown` module.
+    #[cfg(feature = "board-thinknode-m6")]
+    #[embassy_executor::task]
+    async fn thinknode_shutdown_task(_peripheral_power: Output<'static>) -> ! {
+        let reason = umsh_bsp_thinknode_m6::power::SHUTDOWN_SIGNAL.wait().await;
+        settle_saved_state().await;
+        umsh_bsp_thinknode_m6::shutdown::enter_off(reason).await
+    }
+
     /// T-Echo battery monitor task: SAADC only. The divider is hard-wired
     /// (no gate) and the charger exposes no status pin, so external power
     /// comes from usbregstatus (see BSP `power` module).
@@ -5784,46 +5833,108 @@ mod firmware {
             if button.is_high() {
                 continue; // bounce
             }
-            if alert_active() {
-                INPUT_CH.send(InEvent::CancelAlert).await;
-            } else {
-                super::device_node::request_beacon(super::device_node::BeaconTrigger::Button);
-            }
+            primary_button_action().await;
             // One action per press, however long it is held.
             button.wait_for_high().await;
             Timer::after(DEBOUNCE).await;
         }
     }
 
-    /// One-shot sequences for LED_A, the Solar P1's attention indicator.
-    #[cfg(feature = "power-button")]
+    /// The primary-action slot of the UX profile, for a board whose button
+    /// carries it: silence the locate alert if it is running, otherwise ask
+    /// the device node to beacon.
+    #[cfg(any(feature = "power-button", feature = "board-thinknode-m6"))]
+    async fn primary_button_action() {
+        if alert_active() {
+            INPUT_CH.send(InEvent::CancelAlert).await;
+        } else {
+            super::device_node::request_beacon(super::device_node::BeaconTrigger::Button);
+        }
+    }
+
+    /// The ThinkNode M6's one button, PWR (P0.17, active-low).
+    ///
+    /// It carries both jobs the Solar P1 splits across two buttons: a short
+    /// press is the primary action (see [`primary_button_action`]), and a
+    /// hold past `HOLD_OFF` acknowledges on the red LED and requests System
+    /// OFF. A press from System OFF powers the node back on.
+    ///
+    /// The hold is long because the button is shared: a beacon press that
+    /// lingers must not turn a mast-mounted node off.
+    #[cfg(feature = "board-thinknode-m6")]
+    #[embassy_executor::task]
+    async fn thinknode_button_task(mut button: Input<'static>) {
+        const HOLD_OFF: Duration = Duration::from_secs(4);
+        const DEBOUNCE: Duration = Duration::from_millis(20);
+
+        // The press that woke the board from System OFF, or the one that
+        // ran the force-pairing ceremony, is still down. Neither is a
+        // request.
+        if button.is_low() {
+            button.wait_for_high().await;
+            Timer::after(DEBOUNCE).await;
+        }
+
+        loop {
+            button.wait_for_low().await;
+            Timer::after(DEBOUNCE).await;
+            if button.is_high() {
+                continue; // bounce
+            }
+            match select(button.wait_for_high(), Timer::after(HOLD_OFF)).await {
+                Either::First(()) => {
+                    primary_button_action().await;
+                    Timer::after(DEBOUNCE).await;
+                }
+                Either::Second(()) => {
+                    // Hold accepted: acknowledge, and let the blinks finish
+                    // before the teardown cuts them. Bounded, so a wedged
+                    // indicator cannot block powering off.
+                    ATTENTION_LED.signal(LedSequence::PowerOff);
+                    let _ = select(
+                        ATTENTION_LED_DONE.wait(),
+                        Timer::after(Duration::from_millis(1500)),
+                    )
+                    .await;
+                    umsh_bsp_thinknode_m6::power::SHUTDOWN_SIGNAL.signal(ShutdownReason::Requested);
+                    // The teardown waits for the release before arming
+                    // wake; park here until it powers us off.
+                    button.wait_for_high().await;
+                }
+            }
+        }
+    }
+
+    /// One-shot sequences for the attention LED.
+    #[cfg(feature = "attention-led")]
     static ATTENTION_LED: Signal<ThreadModeRawMutex, LedSequence> = Signal::new();
 
     /// Fires when a requested sequence has finished playing, so a caller
     /// that is about to take the board down can let it finish.
-    #[cfg(feature = "power-button")]
+    #[cfg(feature = "attention-led")]
     static ATTENTION_LED_DONE: Signal<ThreadModeRawMutex, ()> = Signal::new();
 
-    /// Confirm an accepted local action on LED_A. Reachable as a plain
-    /// `fn()` because that is the shape `NodeHooks` takes.
-    #[cfg(feature = "power-button")]
+    /// Confirm an accepted local action on the attention LED. Reachable as
+    /// a plain `fn()` because that is the shape `NodeHooks` takes.
+    #[cfg(feature = "attention-led")]
     pub fn confirm_attention_action() {
         ATTENTION_LED.signal(LedSequence::ActionConfirm);
     }
 
-    /// Drives LED_A (P0.15, white, active-high) on the Solar P1.
+    /// Drives the attention LED (active-high): LED_A (P0.15, white) on the
+    /// Solar P1, the red LED (P0.12) on the ThinkNode M6.
     ///
-    /// The board has two LEDs and gives them separate jobs. LED_B (blue) is
-    /// the status light: heartbeat, BLE pairing blink—the "this thing is
-    /// alive, here is its link state" story, which is worth glancing at and
-    /// not worth looking up for. LED_A is the one meant to catch an eye
-    /// across a field: the locate alert, and the short confirmations that
-    /// answer a button press.
+    /// These boards have two LEDs and give them separate jobs. The other
+    /// (blue on both) is the status light: heartbeat, BLE pairing blink—the
+    /// "this thing is alive, here is its link state" story, which is worth
+    /// glancing at and not worth looking up for. This one is meant to catch
+    /// an eye across a field: the locate alert, and the short confirmations
+    /// that answer a button press.
     ///
     /// It idles dark. A second heartbeat would only compete with the first.
-    #[cfg(feature = "power-button")]
+    #[cfg(feature = "attention-led")]
     #[embassy_executor::task]
-    async fn sensecap_attention_led_task(mut led: Output<'static>) -> ! {
+    async fn attention_led_task(mut led: Output<'static>) -> ! {
         let mut engine = LedEngine::attention_only(Instant::now().as_millis());
         loop {
             // On a board with no buzzer the blink is the entire alert, and
@@ -6211,7 +6322,8 @@ mod firmware {
             #[cfg(any(
                 feature = "board-xiao-nrf52",
                 feature = "board-sensecap-solar",
-                feature = "board-wio-tracker-l1"
+                feature = "board-wio-tracker-l1",
+                feature = "board-thinknode-m6"
             ))]
             use umsh_bsp_nrf52840::system_off::ShutdownReason as Reason;
             use umsh_ux_tracker::battery::{BatteryThresholds, boot_permitted};
@@ -6229,6 +6341,14 @@ mod firmware {
                 Irqs,
                 p.P0_31.reborrow(),
                 p.P0_14.reborrow(),
+            )
+            .await;
+            #[cfg(feature = "board-thinknode-m6")]
+            let samples = umsh_bsp_thinknode_m6::power::boot_battery_samples(
+                p.SAADC.reborrow(),
+                Irqs,
+                p.P0_28.reborrow(),
+                p.P0_11.reborrow(),
             )
             .await;
             #[cfg(feature = "board-wio-tracker-l1")]
@@ -6260,6 +6380,8 @@ mod firmware {
                 umsh_bsp_xiao_nrf52::shutdown::enter_off(Reason::BatteryCritical);
                 #[cfg(feature = "board-sensecap-solar")]
                 umsh_bsp_sensecap_solar::shutdown::enter_off(Reason::BatteryCritical).await;
+                #[cfg(feature = "board-thinknode-m6")]
+                umsh_bsp_thinknode_m6::shutdown::enter_off(Reason::BatteryCritical).await;
                 #[cfg(feature = "board-wio-tracker-l1")]
                 wio_enter_off(Reason::BatteryCritical).await;
                 #[cfg(feature = "board-techo")]
@@ -6433,6 +6555,36 @@ mod firmware {
             }
         }
 
+        // ThinkNode M6: the same ceremony on its one button, PWR (P0.17,
+        // active-low), acknowledged on the red LED (P0.12, active-high).
+        // A PWR press is also how a powered-off M6 is started, so as on
+        // the Solar P1, only a press still held after one second counts.
+        #[cfg(feature = "board-thinknode-m6")]
+        let mut pwr_button = Input::new(p.P0_17, Pull::Up);
+        #[cfg(feature = "board-thinknode-m6")]
+        let mut pwr_led = Output::new(p.P0_12, Level::Low, OutputDrive::Standard);
+        #[cfg(feature = "board-thinknode-m6")]
+        {
+            cortex_m::asm::delay(640_000);
+            let force_pairing_at_boot = if pwr_button.is_low() {
+                match select(pwr_button.wait_for_high(), Timer::after_secs(1)).await {
+                    Either::First(()) => false,
+                    Either::Second(()) => pwr_button.is_low(),
+                }
+            } else {
+                false
+            };
+            FORCE_PAIRING_AT_BOOT.store(force_pairing_at_boot, Ordering::Release);
+            if force_pairing_at_boot {
+                for _ in 0..2 {
+                    pwr_led.set_high();
+                    Timer::after_millis(120).await;
+                    pwr_led.set_low();
+                    Timer::after_millis(120).await;
+                }
+            }
+        }
+
         // WDT: 8 s timeout, petted by the heartbeat task every ~2 s.
         let mut wdt_config = WdtConfig::default();
         wdt_config.timeout_ticks = 32768 * 8;
@@ -6488,6 +6640,10 @@ mod firmware {
         // SenseCAP Solar: LED_B (P0.19, blue, active-high) is the heartbeat.
         #[cfg(feature = "board-sensecap-solar")]
         let led = Output::new(p.P0_19, Level::Low, OutputDrive::Standard);
+        // ThinkNode M6: the blue DATA LED (P0.07, active-high) is the
+        // heartbeat; the red one belongs to the attention task.
+        #[cfg(feature = "board-thinknode-m6")]
+        let led = Output::new(p.P0_07, Level::Low, OutputDrive::Standard);
         // Wio Tracker L1: the user LED (D11 / P1.01) is active-high.
         #[cfg(feature = "board-wio-tracker-l1")]
         let led = Output::new(p.P1_01, Level::Low, OutputDrive::Standard);
@@ -6679,6 +6835,57 @@ mod firmware {
             // (bidirectional RF, 2026-07-23); on the XIAO kit it is still
             // only schematic-confirmed, which is exactly the case this
             // degrade-instead-of-panic path exists for.
+            spawner
+                .spawn(radio_task(unready_radio(Sx126x::new(radio_spi, iv, lora_config))).unwrap());
+        }
+
+        // ── SX1262 LoRa radio (ThinkNode M6) ────────────────────────────────
+        // DIO2 alone switches the antenna (no RXEN), and the TCXO runs from
+        // DIO3 at 3.3 V—the one board here whose TCXO is not a 1.8 V part:
+        //   SPI TWISPI1 @16MHz: SCK=P1.13, MISO=P1.15, MOSI=P1.14, CS=P1.12
+        //   RST=P1.10, BUSY=P1.11, DIO1=P1.06
+        //
+        // The peripheral rail (P0.27, "PIN_POWER_EN") comes up first; the
+        // vendor's firmware raises it before touching anything else, and
+        // which loads it carries is not documented. The QSPI flash's supply
+        // enable (P0.21) is held low: the flash is unused, and NV storage is
+        // the internal NVMC.
+        #[cfg(feature = "board-thinknode-m6")]
+        let peripheral_power = Output::new(p.P0_27, Level::High, OutputDrive::Standard);
+        #[cfg(feature = "board-thinknode-m6")]
+        let _flash_power = Output::new(p.P0_21, Level::Low, OutputDrive::Standard);
+        #[cfg(feature = "board-thinknode-m6")]
+        {
+            // Let the rail settle before the radio is reset and addressed.
+            Timer::after_millis(10).await;
+            let mut cfg = SpimConfig::default();
+            cfg.frequency = Frequency::M16;
+            let radio_bus = Spim::new(
+                p.TWISPI1, Irqs, p.P1_13, // SCK
+                p.P1_15, // MISO
+                p.P1_14, // MOSI
+                cfg,
+            );
+            let radio_cs = Output::new(p.P1_12, Level::High, OutputDrive::Standard);
+            let radio_spi = ExclusiveDevice::new(radio_bus, radio_cs, Delay).unwrap();
+
+            let radio_rst = Output::new(p.P1_10, Level::High, OutputDrive::Standard);
+            let radio_dio1 = Input::new(p.P1_06, Pull::None);
+            let radio_busy = Input::new(p.P1_11, Pull::None);
+
+            let iv = GenericSx126xInterfaceVariant::new(
+                radio_rst, radio_dio1, radio_busy, None, // rf_switch_rx: DIO2
+                None, // rf_switch_tx: DIO2
+            )
+            .unwrap();
+
+            let lora_config = LoraConfig {
+                chip: Sx1262,
+                tcxo_ctrl: Some(TcxoCtrlVoltage::Ctrl3V3), // DIO3 → 3.3 V TCXO
+                use_dcdc: true,
+                rx_boost: true,
+            };
+
             spawner
                 .spawn(radio_task(unready_radio(Sx126x::new(radio_spi, iv, lora_config))).unwrap());
         }
@@ -7113,6 +7320,15 @@ mod firmware {
                 config.scl_pullup = true;
                 Twim::new(p.TWISPI0, Irqs, p.P1_11, p.P1_12, config, TX.init([0; 256]))
             };
+            #[cfg(feature = "board-thinknode-m6")]
+            let controller = Twim::new(
+                p.TWISPI0,
+                Irqs,
+                p.P1_09,
+                p.P0_08,
+                TwimConfig::default(),
+                TX.init([0; 256]),
+            );
             BUS.init(umsh_bsp_nrf52840::i2c::Bus::new(controller))
         };
         #[cfg(feature = "board-techo")]
@@ -7459,6 +7675,67 @@ mod firmware {
             spawner.spawn(xiao_shutdown_task().unwrap());
         }
 
+        // ThinkNode M6 peripherals: the SAADC battery monitor on AIN4/P0.28
+        // behind the active-high divider enable (P0.11), with the charger's
+        // status line (P0.15, low while charging); the L76K; and the PWR
+        // button with its two LEDs.
+        #[cfg(feature = "board-thinknode-m6")]
+        {
+            let saadc = Saadc::new(
+                p.SAADC,
+                Irqs,
+                SaadcConfig::default(),
+                [ChannelConfig::single_ended(p.P0_28)],
+            );
+            let divider_enable = Output::new(p.P0_11, Level::Low, OutputDrive::Standard);
+            let charging_n = Input::new(p.P0_15, Pull::Up);
+            spawner.spawn(thinknode_power_task(saadc, divider_enable, charging_n).unwrap());
+
+            // Quectel L76K on UARTE0, behind its own switchable rail, as on
+            // the Solar P1. TIMER1 and PPI 0/1 with group 0 are free—MPSL
+            // holds TIMER0 and PPI 19/30/31, the softdevice controller holds
+            // 17/18 and 20–29, and the freeze diagnostics hold TIMER2.
+            #[cfg(feature = "cap-gnss")]
+            {
+                let mut gnss_config = UarteConfig::default();
+                gnss_config.baudrate = UarteBaudrate::Baud9600;
+                static GNSS_RX: StaticCell<[u8; 256]> = StaticCell::new();
+                static GNSS_TX: StaticCell<[u8; 16]> = StaticCell::new();
+                let gnss_uart = BufferedUarte::new(
+                    p.UARTE0,
+                    p.TIMER1,
+                    p.PPI_CH0,
+                    p.PPI_CH1,
+                    p.PPI_GROUP0,
+                    // rxd, then txd: the family rule that `GPS_RX_PIN` is
+                    // the MCU's RX.
+                    p.P0_03,
+                    p.P0_02,
+                    Irqs,
+                    gnss_config,
+                    GNSS_RX.init([0; 256]),
+                    // Nothing is sent to this receiver: the L76K needs no
+                    // configuration to emit what UMSH reads. The buffer is
+                    // the smallest the driver will take.
+                    GNSS_TX.init([0; 16]),
+                );
+                spawner.spawn(
+                    gnss_task(gnss_uart, BoardGnss::new(p.P0_06, p.P0_29, p.P0_30)).unwrap(),
+                );
+            }
+            // The L76K's 1PPS (P0.31) is unused. The module drives it, so
+            // release it explicitly—no pull, input buffer disconnected—so
+            // its edges cannot toggle the buffer and draw current.
+            umsh_bsp_nrf52840::system_off::tristate_pin(
+                umsh_bsp_nrf52840::system_off::Port::P0,
+                31,
+            );
+
+            spawner.spawn(thinknode_button_task(pwr_button).unwrap());
+            spawner.spawn(attention_led_task(pwr_led).unwrap());
+            spawner.spawn(thinknode_shutdown_task(peripheral_power).unwrap());
+        }
+
         // T-Echo battery monitor: SAADC on AIN2/P0.04. Same SAADC
         // configuration as the other two boards (12-bit, GAIN1_6, 0.6 V
         // ref), so only the BSP divider constant differs—this board's
@@ -7571,7 +7848,7 @@ mod firmware {
             spawner.spawn(sensecap_pwr_button_task(pwr_button).unwrap());
             // LED_A passes from the boot ceremony to the task that owns it
             // for the rest of the run.
-            spawner.spawn(sensecap_attention_led_task(pwr_led).unwrap());
+            spawner.spawn(attention_led_task(pwr_led).unwrap());
             spawner.spawn(sensecap_usr_button_task(usr_button).unwrap());
             spawner.spawn(sensecap_shutdown_task().unwrap());
         }
@@ -7687,22 +7964,22 @@ mod firmware {
             // board right now, and on a board with no buzzer the blink
             // is the entire alert.
             //
-            // Not on the Solar P1, which has a second LED. There the alert
-            // belongs on LED_A (white) alongside the other things meant to
-            // be seen from a distance, and this one stays the status light
-            //—see `sensecap_attention_led_task`.
-            #[cfg(not(feature = "power-button"))]
+            // Not on a board with a second, attention LED. There the alert
+            // belongs alongside the other things meant to be seen from a
+            // distance, and this one stays the status light—see
+            // `attention_led_task`.
+            #[cfg(not(feature = "attention-led"))]
             if alert_active() {
                 engine.start_alert(Instant::now().as_millis());
             } else {
                 engine.stop_alert();
             }
             // The pairing blink yields to the alert on a one-LED board,
-            // where they would otherwise be fighting over the same pin. On
-            // the Solar P1 they are on different LEDs and can both run.
-            #[cfg(not(feature = "power-button"))]
+            // where they would otherwise be fighting over the same pin. With
+            // an attention LED they are on different LEDs and can both run.
+            #[cfg(not(feature = "attention-led"))]
             let alert_holds_the_led = alert_active();
-            #[cfg(feature = "power-button")]
+            #[cfg(feature = "attention-led")]
             let alert_holds_the_led = false;
             // The pairing blink is a claim about the transport: with Bluetooth
             // off there is no window to advertise, so mode 1 reads as idle. The
@@ -7736,17 +8013,17 @@ mod firmware {
             });
             // An alert edge must reach the LED without waiting out the
             // heartbeat's multi-second deadline. A `Signal` has one useful
-            // consumer, so on the Solar P1 this arm is gone entirely and
+            // consumer, so with an attention LED this arm is gone entirely and
             // `ALERT_CHANGED` belongs to the attention LED that shows the
             // alert—two waiters would leave whichever registered first
             // asleep through the edge.
-            #[cfg(not(feature = "power-button"))]
+            #[cfg(not(feature = "attention-led"))]
             let _ = select(
                 Timer::at(Instant::from_millis(decision.next_deadline_ms)),
                 ALERT_CHANGED.wait(),
             )
             .await;
-            #[cfg(feature = "power-button")]
+            #[cfg(feature = "attention-led")]
             Timer::at(Instant::from_millis(decision.next_deadline_ms)).await;
         }
     }

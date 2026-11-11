@@ -36,8 +36,8 @@ companion connected and ends management of the target.
 The shipping board feature selects an internal profile in
 `firmware/nrf52-tracker/src/dfu.rs`. These profiles target the documented
 Adafruit-derived bootloaders, not arbitrary replacement bootloaders.
-XIAO and SenseCAP Solar select BLE for Default; T-Echo, T1000-E, and Wio
-Tracker L1 select UF2. These defaults are independent of the command's
+XIAO and SenseCAP Solar select BLE for Default; T-Echo, T1000-E, Wio
+Tracker L1, and ThinkNode M6 select UF2. These defaults are independent of the command's
 transport. ESP32 and platforms without a hook return `UNIMPLEMENTED`.
 
 Profile | Documented bootloader contract
@@ -47,6 +47,7 @@ T1000-E | Seeed/Adafruit nRF52 DFU, [board notes](hardware/t1000e-hardware.md)
 SenseCAP Solar | `0.9.2-OTAFIX2.2-BP1.3`, [board notes](hardware/sensecap-solar-node-p1-pro-hardware.md)
 Wio Tracker L1 / L1 Pro | `0.9.2-dirty`, `TRACKER L1`, S140 7.3.0, [board notes](hardware/seeed-wio-tracker-l1-pro-hardware.md)
 XIAO | `0.6.1`, `Seeed_XIAO_nRF52840_Sense`, [board notes](hardware/seeed-xiao-nrf52840-wio-sx1262-kit-hardware.md)
+ThinkNode M6 | `0.9.2-6-g3a2708b-dirty`, `nRF52840-ThinkNodeM6-v1`, S140 6.1.1, [board notes](hardware/elecrow-thinknode-m6-hardware.md)
 
 The shared nRF52840 BSP writes GPREGRET and resets: `0x57` for UF2 plus
 CDC, `0x4E` for serial DFU, and `0xA8` for BLE with bootloader SoftDevice
@@ -187,7 +188,7 @@ read back successfully.
 
 ### Remaining qualification
 
-T-Echo, T1000-E, and SenseCAP Solar require accessible hardware for qualification.
+T-Echo, T1000-E, SenseCAP Solar, and ThinkNode M6 require accessible hardware for qualification.
 Neither their successful builds nor the common GPREGRET contract establish
 their BLE residency or recovery behavior.
 Direct BLE and mesh command delivery, battery-only residency, and watchdog

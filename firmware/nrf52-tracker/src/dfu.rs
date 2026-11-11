@@ -11,6 +11,7 @@ enum Profile {
     SenseCapSolar,
     WioTrackerL1,
     XiaoSense,
+    ThinknodeM6,
     Unsupported,
 }
 
@@ -24,6 +25,8 @@ const PROFILE: Profile = if cfg!(feature = "board-techo") {
     Profile::WioTrackerL1
 } else if cfg!(feature = "board-xiao-nrf52") {
     Profile::XiaoSense
+} else if cfg!(feature = "board-thinknode-m6") {
+    Profile::ThinknodeM6
 } else {
     Profile::Unsupported
 };
@@ -31,7 +34,9 @@ const PROFILE: Profile = if cfg!(feature = "board-techo") {
 pub fn prepare(mode: DfuMode) -> Result<DfuMode, Status> {
     let default = match PROFILE {
         Profile::XiaoSense | Profile::SenseCapSolar => DfuMode::Ble,
-        Profile::TEcho | Profile::T1000E | Profile::WioTrackerL1 => DfuMode::Uf2,
+        Profile::TEcho | Profile::T1000E | Profile::WioTrackerL1 | Profile::ThinknodeM6 => {
+            DfuMode::Uf2
+        }
         Profile::Unsupported => return Err(Status::UNIMPLEMENTED),
     };
     Ok(match mode {

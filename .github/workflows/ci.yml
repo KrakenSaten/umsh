@@ -222,6 +222,8 @@ jobs:
             make_target: build-wio-tracker-l1
           - board: xiao-nrf52
             make_target: build-xiao-nrf52
+          - board: thinknode-m6
+            make_target: build-thinknode-m6
     steps:
       - uses: actions/checkout@v4
 

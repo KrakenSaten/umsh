@@ -8,6 +8,7 @@
 	build-wio-tracker-l1 flash-wio-tracker-l1 \
 	build-sensecap-solar flash-sensecap-solar flash-ble-sensecap-solar \
 	build-xiao-nrf52 flash-xiao-nrf52 flash-ble-xiao-nrf52 \
+	build-thinknode-m6 flash-thinknode-m6 \
 	install-ble-dfu-setup scan-ble-dfu ble-dfu-check \
 	build-t1000e flash-t1000e-serial \
 	build-techo flash-techo flash-techo-serial \
@@ -21,7 +22,7 @@
 	build-tdeck-keyboard flash-tdeck-keyboard backup-tdeck-keyboard test-tdeck-keyboard \
 	esp-toolchain-check espflash-check build-all-firmware \
 	dfu-zip-techo dfu-zip-t1000e dfu-zip-sensecap-solar \
-	dfu-zip-wio-tracker-l1 dfu-zip-xiao-nrf52 \
+	dfu-zip-wio-tracker-l1 dfu-zip-xiao-nrf52 dfu-zip-thinknode-m6 \
 	merged-bin-heltec-v3 merged-bin-heltec-v3-bridge \
 	merged-bin-tbeam-supreme merged-bin-tlora-pager \
 	merged-bin-xiao-esp32s3 \
@@ -203,6 +204,17 @@ flash-xiao-nrf52: build-xiao-nrf52
 	scripts/flash.py --board xiao-nrf52 --copy-default \
 		$(TARGET_DIR)/firmware-xiao-nrf52.uf2
 
+# Elecrow ThinkNode M6. Double-press RESET for the bootloader's
+# ThinkNodeM6 volume. The image is packed with the bootloader's own
+# 0x239A00DA family, read from its CURRENT.UF2.
+build-thinknode-m6:
+	cd firmware/thinknode-m6 && cargo build --release
+	scripts/mkimage.py --board thinknode-m6 --hex $(TARGET_DIR)/firmware-thinknode-m6
+
+flash-thinknode-m6: build-thinknode-m6
+	scripts/flash.py --board thinknode-m6 --copy-default \
+		$(TARGET_DIR)/firmware-thinknode-m6.uf2
+
 # Native Bluetooth upload to a board already in BLE DFU. The optional
 # uploader environment is separate from firmware build dependencies.
 # Setup: make install-ble-dfu-setup. Select the bootloader UUID/address from
@@ -299,6 +311,9 @@ dfu-zip-wio-tracker-l1: build-wio-tracker-l1
 
 dfu-zip-xiao-nrf52: build-xiao-nrf52
 	$(call dfu-genpkg,$(TARGET_DIR)/firmware-xiao-nrf52,$(SD_REQ_S140_7_3_0),$(FW_DIR)/umsh-xiao-nrf52-$(FW_VERSION)-dfu.zip)
+
+dfu-zip-thinknode-m6: build-thinknode-m6
+	$(call dfu-genpkg,$(TARGET_DIR)/firmware-thinknode-m6,$(SD_REQ_S140_6_1_1),$(FW_DIR)/umsh-thinknode-m6-$(FW_VERSION)-dfu.zip)
 
 # ─── ESP32 firmware (firmware-esp32/ sibling workspace) ──────────────────────
 #

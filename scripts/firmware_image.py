@@ -101,6 +101,21 @@ BOARDS = {
         "mount":  "/Volumes/XIAO-SENSE",
         "description": "Seeed XIAO nRF52840 + Wio-SX1262 Kit",
     },
+    "thinknode-m6": {
+        # Confirmed against a retail unit's INFO_UF2.TXT + CURRENT.UF2
+        # (2026-11-11):
+        #   Bootloader: UF2 Bootloader 0.9.2-6-g3a2708b-dirty
+        #   Model: ELECROW ThinkNode M6 for Meshtastic
+        #   Board-ID: nRF52840-ThinkNodeM6-v1
+        #   SoftDevice: S140 6.1.1  → app starts at 0x26000
+        #   Family ID (from CURRENT.UF2): 0x239A00DA  ← the bootloader's
+        #     own VID<<16|PID, not the generic 0xADA52840
+        #   Bootloader volume name: ThinkNodeM6
+        "base":   0x00026000,        # S140 v6.1.1 reserves 152 KiB (confirmed)
+        "family": 0x239A00DA,        # from CURRENT.UF2 (confirmed)
+        "mount":  "/Volumes/ThinkNodeM6",
+        "description": "Elecrow ThinkNode M6",
+    },
 }
 
 

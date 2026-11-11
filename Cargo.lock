@@ -1772,6 +1772,51 @@ dependencies = [
 ]
 
 [[package]]
+name = "firmware-thinknode-m6"
+version = "0.1.0"
+dependencies = [
+ "cortex-m",
+ "cortex-m-rt",
+ "critical-section",
+ "defmt 0.3.100",
+ "embassy-executor",
+ "embassy-futures",
+ "embassy-nrf",
+ "embassy-sync",
+ "embassy-time",
+ "embassy-usb",
+ "embedded-alloc",
+ "embedded-hal-bus",
+ "heapless 0.8.0",
+ "heapless 0.9.3",
+ "log",
+ "lora-phy",
+ "nrf-mpsl",
+ "nrf-sdc",
+ "rand 0.10.1",
+ "rand_chacha",
+ "rand_core 0.6.4",
+ "static_cell",
+ "trouble-host",
+ "umsh-bsp-nrf52840",
+ "umsh-bsp-thinknode-m6",
+ "umsh-core",
+ "umsh-crypto",
+ "umsh-gnss",
+ "umsh-hal",
+ "umsh-journal-store",
+ "umsh-mac",
+ "umsh-node",
+ "umsh-radio-loraphy",
+ "umsh-sync",
+ "umsh-ulcp",
+ "umsh-ulcp-device",
+ "umsh-ulcp-runtime",
+ "umsh-ux-display-tracker",
+ "umsh-ux-tracker",
+]
+
+[[package]]
 name = "firmware-wio-tracker-l1"
 version = "0.1.0"
 dependencies = [
@@ -4605,6 +4650,26 @@ dependencies = [
  "embassy-sync",
  "embassy-time",
  "embedded-graphics",
+ "umsh-bsp-nrf52840",
+ "umsh-crypto",
+ "umsh-gnss",
+ "umsh-hal",
+ "umsh-mac",
+ "umsh-radio-loraphy",
+ "umsh-ulcp",
+ "umsh-ulcp-device",
+ "umsh-ux-tracker",
+]
+
+[[package]]
+name = "umsh-bsp-thinknode-m6"
+version = "0.1.0"
+dependencies = [
+ "cortex-m",
+ "embassy-futures",
+ "embassy-nrf",
+ "embassy-sync",
+ "embassy-time",
  "umsh-bsp-nrf52840",
  "umsh-crypto",
  "umsh-gnss",

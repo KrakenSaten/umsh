@@ -104,8 +104,8 @@ async fn meshcore_forwarder_task(public_key: [u8; 32], seed: [u8; 32], t_frame_m
 /// The T-1000E marks each completed node transmit for its battery-level
 /// estimator (voltage sampled near a transmission is sagged, not resting
 /// OCV) and confirms a button beacon with its LED and buzzer. The Solar
-/// P1 marks the load too, and confirms on its white attention LED. The
-/// T-Echo has neither.
+/// P1 and ThinkNode M6 mark the load too, and confirm on their attention
+/// LEDs. The T-Echo has neither.
 fn hooks() -> node::NodeHooks {
     #[allow(unused_mut)]
     let mut hooks = node::NodeHooks::default();
@@ -117,6 +117,10 @@ fn hooks() -> node::NodeHooks {
     {
         hooks.note_external_load = umsh_bsp_sensecap_solar::power::note_external_load;
     }
+    #[cfg(all(feature = "cap-battery-saadc", feature = "board-thinknode-m6"))]
+    {
+        hooks.note_external_load = umsh_bsp_thinknode_m6::power::note_external_load;
+    }
     #[cfg(feature = "t1000e")]
     {
         hooks.beacon_confirm = || {
@@ -125,7 +129,7 @@ fn hooks() -> node::NodeHooks {
             umsh_bsp_t1000e::BUZZER_SIGNAL.signal(&umsh_ux_tracker::buzzer::melodies::BEACON_ACK);
         };
     }
-    #[cfg(feature = "power-button")]
+    #[cfg(feature = "attention-led")]
     {
         hooks.beacon_confirm = crate::firmware::confirm_attention_action;
     }

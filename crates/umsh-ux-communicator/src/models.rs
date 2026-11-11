@@ -13,6 +13,7 @@ pub const LILYGO_T_BEAM_SUPREME: u16 = 8;
 pub const LILYGO_T_LORA_PAGER: u16 = 9;
 pub const SEEED_XIAO_ESP32S3_KIT: u16 = 10;
 pub const LILYGO_T_DECK: u16 = 11;
+pub const ELECROW_THINKNODE_M6: u16 = 12;
 
 pub const IPHONE: u16 = 0xFE00;
 pub const IPAD: u16 = 0xFE01;
@@ -36,6 +37,7 @@ pub const fn name(model: u16) -> Option<&'static str> {
         LILYGO_T_LORA_PAGER => "T-LoRa Pager",
         SEEED_XIAO_ESP32S3_KIT => "XIAO ESP32S3",
         LILYGO_T_DECK => "T-Deck",
+        ELECROW_THINKNODE_M6 => "ThinkNode M6",
         IPHONE => "iPhone",
         IPAD => "iPad",
         ANDROID_PHONE => "Android phone",

@@ -1,0 +1,128 @@
+[package]
+name = "firmware-thinknode-m6"
+description = "Elecrow ThinkNode M6 ULCP device firmware over USB-CDC and BLE GATT"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[features]
+ulcp-i2c = ["umsh-ulcp-runtime/i2c", "umsh-bsp-thinknode-m6/ulcp-i2c", "embassy-nrf/nfc-pins-as-gpio"]
+# See firmware/techo/Cargo.toml for the capability-feature
+# rationale; this block is kept identical across the device boards, the
+# `default` and BSP capability forwarding differ. Default build = ThinkNode M6.
+#
+# The ThinkNode M6 is the SenseCAP Solar's shape with one button: SX1262
+# radio, SAADC battery monitor, L76K GNSS, no display, two active-high
+# LEDs. Its single PWR button carries both power and the primary action,
+# so it takes `attention-led` for the second LED but not `power-button`,
+# which is the Solar's two-button arrangement.
+default = ["board-thinknode-m6"]
+board-techo = ["display-epd", "button-nav", "system-off-techo", "led-active-low", "led-rgb", "cap-battery-saadc", "cap-gnss"]
+board-t1000e = ["ulcp-i2c", "t1000e", "cap-battery-saadc", "cap-gnss", "gnss-holds-the-clock", "cap-illuminance"]
+board-sensecap-solar = ["ulcp-i2c", "cap-battery-saadc", "power-button", "cap-gnss", "meshcore-forwarder"]
+board-wio-tracker-l1 = ["display-oled", "dpad-nav", "system-off-wio", "cap-battery-saadc", "cap-buzzer", "cap-gnss", "gnss-holds-the-clock"]
+board-xiao-nrf52 = ["ulcp-i2c", "cap-battery-saadc", "led-active-low", "led-rgb", "meshcore-forwarder", "dcdc-reg1"]
+board-thinknode-m6 = ["ulcp-i2c", "cap-battery-saadc", "cap-gnss", "attention-led", "meshcore-forwarder"]
+t1000e = []
+cap-battery-saadc = []
+# An ambient light sensor is fitted. Advertises `CAP_ILLUMINANCE` and
+# answers `PROP_ILLUMINANCE` with a measurement taken on each read.
+cap-illuminance = []
+# A GNSS receiver is fitted. Advertises `CAP_GNSS` and spawns the pump;
+# the receiver stays powered down until `PROP_GNSS_ENABLED` says
+# otherwise.
+cap-gnss = []
+# Forwards MeshCore v1 traffic beside UMSH, as a third radio client.
+# For boards plausibly left in place as infrastructure.
+meshcore-forwarder = ["umsh-ulcp-runtime/meshcore-forwarder"]
+# The GNSS receiver's own backup domain is this board's only real-time
+# clock, so the boot path reads the time back out of the receiver.
+gnss-holds-the-clock = []
+cap-buzzer = []
+has-display = []
+display-epd = ["has-display"]
+display-oled = ["has-display"]
+button-nav = []
+# The board has a four-way pad with a center press beside the button its
+# case labels Back, so no control has to carry more than one meaning: the
+# pad moves and selects and the button goes back. Implies `button-nav`,
+# which is still what resolves the Back button's power-off hold.
+dpad-nav = ["button-nav"]
+system-off-techo = []
+system-off-wio = []
+led-active-low = []
+# The status LED is RGB, one pin per color, so each indication has its own.
+led-rgb = []
+# LFCLK from the internal RC oscillator (crystal-less XIAO-based boards).
+lfclk-rc = []
+# The nRF52840's REG1 DC/DC converter, for boards whose DCC inductor is
+# fitted: the converter has nothing to switch without it.
+dcdc-reg1 = []
+# Dedicated hardware power button + System OFF teardown / GPIO-DETECT wake
+# (Solar P1 PWR button on P1.01).
+power-button = ["attention-led"]
+# A second LED carries the locate alert and the confirmations that answer
+# a button press, leaving the heartbeat LED to show status alone.
+attention-led = []
+boot-pairing-window = []
+# Diagnostic build: skip SDC/Trouble (USB-only device); retain MPSL.
+no-ble = []
+# Hardware-diagnostic mode: mirror BLE security/GATT lifecycle events as
+# ASCII on the USB serial endpoint.
+ble-debug = ["trouble-host/security-debug", "trouble-host/log", "dep:log"]
+ble-store-fault-inject = ["ble-debug"]
+ble-wipe-on-boot = ["ble-debug"]
+
+[[bin]]
+name = "firmware-thinknode-m6"
+# The protocol, security, transport-arbitration, and BLE implementation live in
+# the shared nRF52840 tracker sources. Board differences are selected by
+# the capability + `board-thinknode-m6` features above.
+path = "../nrf52-tracker/src/main.rs"
+
+[dependencies]
+umsh-bsp-nrf52840 = { path = "../../crates/umsh-bsp-nrf52840", default-features = false }
+umsh-bsp-thinknode-m6 = { path = "../../crates/umsh-bsp-thinknode-m6", default-features = false }
+umsh-radio-loraphy = { path = "../../crates/umsh-radio-loraphy", default-features = false }
+umsh-ulcp = { path = "../../crates/umsh-ulcp" }
+umsh-ulcp-device = { path = "../../crates/umsh-ulcp-device" }
+umsh-ulcp-runtime = { path = "../../crates/umsh-ulcp-runtime", features = ["ble-host", "device-node", "node-thread-mode-mutex", "gnss"] }
+umsh-gnss = { path = "../../crates/umsh-gnss" }
+umsh-crypto = { path = "../../crates/umsh-crypto", default-features = false, features = ["software-crypto"] }
+umsh-hal = { path = "../../crates/umsh-hal", default-features = false }
+umsh-journal-store = { path = "../../crates/umsh-journal-store" }
+umsh-ux-tracker = { path = "../../crates/umsh-ux-tracker", default-features = false }
+umsh-ux-display-tracker = { path = "../../crates/umsh-ux-display-tracker", default-features = false }
+heapless = { version = "0.8", default-features = false }
+heapless09 = { package = "heapless", version = "0.9", default-features = false }
+embassy-futures = { version = "0.1", default-features = false }
+embassy-sync = { version = "0.8", default-features = false }
+log = { version = "0.4", default-features = false, optional = true }
+
+[target.'cfg(target_os = "none")'.dependencies]
+cortex-m = { version = "0.7" }
+cortex-m-rt = { version = "0.7", features = ["set-vtor"] }
+embassy-executor = { version = "0.10", default-features = false, features = ["platform-cortex-m", "executor-thread", "embassy-time-driver"] }
+embassy-time = { version = "0.5", default-features = false, features = ["tick-hz-32_768"] }
+embassy-nrf = { version = "0.11", default-features = false, features = ["nrf52840", "time-driver-rtc1", "gpiote", "rt", "unstable-pac"] }
+embassy-usb = { version = "0.6", default-features = false }
+static_cell = "2"
+lora-phy = { workspace = true }
+embedded-hal-bus = { version = "0.3", default-features = false, features = ["async"] }
+embedded-alloc = { version = "0.5", default-features = false }
+defmt = "0.3"
+nrf-mpsl = { version = "0.3", default-features = false, features = ["critical-section-impl"] }
+nrf-sdc = { version = "0.4", default-features = false, features = ["nrf52840", "peripheral", "central"] }
+trouble-host = { version = "0.7", default-features = false, features = ["derive", "peripheral", "gatt", "security", "default-packet-pool", "default-packet-pool-mtu-255"] }
+rand_core = { workspace = true }
+rand_chacha = { version = "0.3", default-features = false }
+umsh-core = { path = "../../crates/umsh-core", default-features = false }
+umsh-mac = { path = "../../crates/umsh-mac", default-features = false, features = ["software-crypto"] }
+umsh-node = { path = "../../crates/umsh-node", default-features = false, features = ["alloc", "software-crypto"] }
+umsh-sync = { path = "../../crates/umsh-sync", default-features = false }
+rand = { workspace = true }
+
+[dev-dependencies]
+lora-phy = { workspace = true }
+critical-section = { version = "1", features = ["std"] }
